@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Win32;
+using System;
 using System.Collections.Generic;
 
 namespace ScreenInfo
@@ -18,6 +19,40 @@ namespace ScreenInfo
                 Console.WriteLine($"Scaling Factor: {monitor.ScalingFactor:P0}"); // Shows as percentage
                 Console.WriteLine($"Position: ({monitor.Left}, {monitor.Top})");
             }
+            Console.WriteLine();
+
+            string registryPath = @"SYSTEM\CurrentControlSet\Enum\DISPLAY";
+
+            using (RegistryKey key = Registry.LocalMachine.OpenSubKey(registryPath))
+            {
+                if (key != null)
+                {
+                    foreach (string subKeyName in key.GetSubKeyNames())
+                    {
+                        using (RegistryKey subKey = key.OpenSubKey(subKeyName))
+                        {
+                            if (subKey != null)
+                            {
+                                foreach (string deviceKeyName in subKey.GetSubKeyNames())
+                                {
+                                    using (RegistryKey deviceKey = subKey.OpenSubKey(deviceKeyName + @"\Device Parameters"))
+                                    {
+                                        if (deviceKey != null)
+                                        {
+                                            if (deviceKey.GetValue("EDID") is byte[] edid && edid.Length >= 128)
+                                            {
+                                                string monitorName = MonitorHelper.GetMonitorName(edid);
+                                                Console.WriteLine($"Monitor: {monitorName}");
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             Console.ReadKey();
         }
     }

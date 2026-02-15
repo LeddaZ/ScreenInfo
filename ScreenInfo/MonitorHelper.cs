@@ -1,6 +1,8 @@
 ﻿using System;
-using System.Runtime.InteropServices;
 using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
 
 namespace ScreenInfo
 {
@@ -120,6 +122,37 @@ namespace ScreenInfo
             EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, callback, IntPtr.Zero);
 
             return monitors;
+        }
+
+        public static MonitorDetails GetMonitor(int number)
+        {
+            List<MonitorDetails> monitors = GetAllMonitors();
+
+            MonitorDetails monitor = monitors.FirstOrDefault(m => m.DeviceName.Equals($"\\\\.\\DISPLAY{number}"));
+
+            return monitor ?? throw new ArgumentException($"Monitor with device name \\\\.\\DISPLAY{number} not found.",
+                    nameof(number));
+        }
+
+        public static string GetMonitorName(byte[] edid)
+        {
+            // Monitor name is stored in descriptor blocks starting at byte 54
+            for (int i = 54; i < 126; i += 18)
+            {
+                // Check if this is a monitor name descriptor (type 0xFC)
+                if (edid[i] == 0 && edid[i + 1] == 0 && edid[i + 2] == 0 && edid[i + 3] == 0xFC)
+                {
+                    byte[] nameBytes = new byte[13];
+                    Array.Copy(edid, i + 5, nameBytes, 0, 13);
+
+                    return Encoding.ASCII.GetString(nameBytes)
+                        .Replace("\n", "")
+                        .Replace("\0", "")
+                        .Trim();
+                }
+            }
+
+            return "Unknown Monitor";
         }
     }
 }
